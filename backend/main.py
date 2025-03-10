@@ -5,6 +5,7 @@ from typing import Dict, Optional, List
 import joblib
 from pathlib import Path
 from rl_model import AkinatorRL
+import logging
 
 app = FastAPI()
 
@@ -34,22 +35,31 @@ class FeedbackRequest(BaseModel):
 # Initialize the RL model
 rl_model = AkinatorRL()
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(request: PredictionRequest):
     answers = request.answers
+    
+    logger.info(f"Received answers: {answers}")
     
     # Get prediction based on current answers
     prediction, confidence = rl_model.predict(answers)
     
     if prediction:
+        logger.info(f"Made prediction: {prediction} with confidence {confidence}")
         return {"prediction": prediction, "confidence": confidence}
     
     # If no confident prediction, get the next question
     next_question = rl_model.get_next_question(answers)
     
     if not next_question:
+        logger.warning("No next question available")
         return {"prediction": "I don't know what you're thinking of!", "confidence": 0.0}
     
+    logger.info(f"Next question: {next_question}")
     return {"next_question": next_question, "confidence": confidence}
 
 @app.post("/feedback")
@@ -75,3 +85,24 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
+@app.get("/admin/data")
+async def get_admin_data():
+    """Get all questions and entities for the admin interface"""
+    return {
+        "questions": rl_model.questions,
+        "entities": rl_model.entities
+    }
+
+@app.get("/debug")
+async def debug():
+    """Get debug information about the current state of the system"""
+    return {
+        "num_questions": len(rl_model.questions),
+        "num_entities": len(rl_model.entities),
+        "sample_entities": list(rl_model.entities.keys())[:5],
+        "sample_questions": rl_model.questions[:5],
+        "prediction_threshold": {
+            "min_questions": 8,
+            "min_confidence": 0.8
+        }
+    }

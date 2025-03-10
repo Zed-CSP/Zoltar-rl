@@ -13,6 +13,7 @@ export default function Home() {
   const [userEntity, setUserEntity] = useState<string>("");
   const [gameCount, setGameCount] = useState<number>(0);
   const [showIntro, setShowIntro] = useState<boolean>(true);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const handleAnswer = async (answer: boolean) => {
     setIsLoading(true);
@@ -75,6 +76,19 @@ export default function Home() {
 
   const startGame = () => {
     setShowIntro(false);
+  };
+
+  const toggleDebug = async () => {
+    if (debugInfo) {
+      setDebugInfo(null);
+    } else {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/debug");
+        setDebugInfo(response.data);
+      } catch (error) {
+        console.error("Error fetching debug info:", error);
+      }
+    }
   };
 
   return (
@@ -209,6 +223,23 @@ export default function Home() {
           </div>
         </div>
       )}
+      {debugInfo && (
+        <div className="mt-8 p-4 bg-black/30 rounded-lg text-xs font-mono overflow-auto max-h-60">
+          <div className="flex justify-between mb-2">
+            <h3 className="font-bold">Debug Info</h3>
+            <button onClick={toggleDebug} className="text-white/60 hover:text-white">Close</button>
+          </div>
+          <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+        </div>
+      )}
+      <div className="absolute bottom-4 left-4">
+        <button 
+          onClick={toggleDebug}
+          className="text-white/40 hover:text-white/70 text-xs px-2 py-1 bg-white/10 rounded"
+        >
+          Debug
+        </button>
+      </div>
     </div>
   );
 }
